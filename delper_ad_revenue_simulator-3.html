@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delper Ad Revenue — Perpetual Simulation (Grounded Model)</title>
+<style>
+  :root{
+    --bg: #10151F;
+    --panel: #161C29;
+    --panel2: #131824;
+    --line: #262E40;
+    --ink: #E9E7DE;
+    --ink-dim: #9CA3B5;
+    --ink-faint: #6B7284;
+    --teal: #4FB6A8;
+    --teal-dim: #2E6E66;
+    --amber: #E0A94B;
+    --amber-dim: #8A6A2E;
+    --brick: #C3654F;
+    --green: #6FBF7A;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(79,182,168,0.07), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(224,169,75,0.06), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family: "Iowan Old Style","Georgia",ui-serif,serif;
+    font-feature-settings:"tnum" 1;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family: "SF Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:28px 20px 60px; }
+
+  header{ margin-bottom:22px; }
+  .brand-eyebrow{
+    font-family: "SF Mono","IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:11.5px;
+    color:var(--teal); margin:0 0 10px;
+  }
+  h1{
+    font-size:clamp(28px,4vw,40px); line-height:1.05; margin:0 0 12px;
+    font-weight:600; letter-spacing:-0.01em; color:var(--ink);
+  }
+  .sub{ color:var(--ink-dim); max-width:760px; font-size:15.5px; line-height:1.55; margin:0; }
+
+  .badge-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  .badge{
+    font-family:"SF Mono","IBM Plex Mono",ui-monospace,monospace; font-size:11px;
+    letter-spacing:.03em; padding:5px 10px; border-radius:100px;
+    border:1px solid var(--line); color:var(--ink-dim); background:var(--panel2);
+  }
+  .badge b{ color:var(--teal); font-weight:600; }
+
+  /* KPI strip */
+  .kpis{
+    display:grid; grid-template-columns: repeat(6, 1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden;
+    margin:22px 0 20px; box-shadow:var(--shadow);
+  }
+  @media (max-width:1000px){ .kpis{ grid-template-columns: repeat(3,1fr); } }
+  @media (max-width:640px){ .kpis{ grid-template-columns: repeat(2,1fr); } }
+  .kpi{ background:var(--panel); padding:16px 16px 14px; }
+  .kpi .label{
+    font-family:"SF Mono","IBM Plex Mono",ui-monospace,monospace; font-size:10.5px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px;
+  }
+  .kpi .value{ font-size:22px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .kpi .value.teal{ color:var(--teal); }
+  .kpi .value.amber{ color:var(--amber); }
+  .kpi .value.green{ color:var(--green); }
+  .kpi .foot{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
+
+  /* Controls */
+  .controls{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:12px 16px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .controls .grp{ display:flex; align-items:center; gap:8px; }
+  button.ctl{
+    font-family:"SF Mono","IBM Plex Mono",ui-monospace,monospace; font-size:12.5px;
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:6px; padding:8px 14px; cursor:pointer; letter-spacing:.02em;
+  }
+  button.ctl:hover{ border-color:var(--teal); color:var(--teal); }
+  button.ctl.primary{ background:var(--teal-dim); border-color:var(--teal); color:#EAFBF7; }
+  input[type=range]{ accent-color:var(--teal); width:120px; }
+  .controls label{ font-size:11.5px; color:var(--ink-dim); font-family:"SF Mono",monospace; }
+  .speed-val{ font-family:"SF Mono",monospace; font-size:12px; color:var(--teal); min-width:32px; display:inline-block; }
+
+  /* Panels */
+  .grid2{ display:grid; grid-template-columns: 1.5fr 1fr; gap:18px; margin-bottom:18px; }
+  @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:18px 18px 14px; box-shadow:var(--shadow);
+  }
+  .panel h2{
+    font-size:14px; letter-spacing:.03em; color:var(--ink); margin:0 0 4px;
+    font-family:"SF Mono","IBM Plex Mono",ui-monospace,monospace; font-weight:600;
+  }
+  .panel .panel-sub{ font-size:12px; color:var(--ink-faint); margin:0 0 14px; }
+
+  canvas#chart{ width:100%; height:260px; display:block; }
+  .chart-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:11.5px; color:var(--ink-dim); }
+  .legend-item{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:10px; height:10px; border-radius:2px; display:inline-block; }
+
+  /* Assumptions panel */
+  .assum-row{ display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .assum-row:last-child{ border-bottom:none; }
+  .assum-row .k{ color:var(--ink-dim); }
+  .assum-row .v{ color:var(--ink); font-family:"SF Mono",monospace; font-size:12.5px; text-align:right; }
+
+  /* Gauge */
+  .gauge-wrap{ margin-top:6px; }
+  .gauge-track{ width:100%; height:10px; background:var(--panel2); border-radius:100px; overflow:hidden; border:1px solid var(--line); }
+  .gauge-fill{ height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal)); width:0%; transition:width .4s ease; }
+  .gauge-labels{ display:flex; justify-content:space-between; margin-top:6px; font-size:11px; color:var(--ink-faint); font-family:"SF Mono",monospace; }
+
+  /* Ledger */
+  .ledger-panel{ margin-bottom:24px; }
+  .ledger-scroll{ max-height:340px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; }
+  table.ledger{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.ledger thead th{
+    position:sticky; top:0; background:var(--panel2); color:var(--ink-faint);
+    text-align:left; padding:9px 12px; font-family:"SF Mono",monospace; font-size:10.5px;
+    letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--line); z-index:1;
+  }
+  table.ledger td{ padding:8px 12px; border-bottom:1px solid var(--line); color:var(--ink-dim); }
+  table.ledger tr:last-child td{ border-bottom:none; }
+  table.ledger tr.milestone td{ color:var(--amber); }
+  table.ledger tr.milestone-rev td{ color:var(--green); }
+  table.ledger .m{ font-family:"SF Mono",monospace; color:var(--ink-faint); white-space:nowrap; }
+
+  footer{ color:var(--ink-faint); font-size:11.5px; line-height:1.6; border-top:1px solid var(--line); padding-top:16px; margin-top:8px; }
+  footer b{ color:var(--ink-dim); }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="brand-eyebrow">Delper Ecom · Ad Revenue Model — Reconstructed</p>
+    <h1>Perpetual Ad Revenue Simulator</h1>
+    <p class="sub">A running, month-by-month model of Delper's rewarded-ad business: the original plan's own 60-minutes/day watch-time assumption, priced at a real-world blended CPM instead of the plan's CPC-priced-as-CPM rate. Growth follows a 4-year S-curve toward a 6B-user ceiling — global population scale — then holds at steady state indefinitely.</p>
+    <div class="badge-row">
+      <span class="badge">CPM <b>$3–$8</b> blended</span>
+      <span class="badge">Watch time <b>60 min/day</b></span>
+      <span class="badge">Deductions <b>30% reward + 10% statutory</b></span>
+      <span class="badge">Ceiling <b>6B users</b></span>
+    </div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Month / Year</div>
+      <div class="value teal" id="kpiMonth">000001</div>
+      <div class="foot" id="kpiYearFoot">Year 1</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Active Users</div>
+      <div class="value" id="kpiUsers">0</div>
+      <div class="foot" id="kpiUsersFoot">of 6B ceiling</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Blended CPM (this month)</div>
+      <div class="value amber" id="kpiCpm">$3.00</div>
+      <div class="foot" id="kpiCpmFoot">matures as verticals expand</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Net Revenue (month)</div>
+      <div class="value green" id="kpiMonthly">$0</div>
+      <div class="foot" id="kpiMonthlyFoot">after 30%+10% deductions</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Run-Rate (annualized)</div>
+      <div class="value" id="kpiRunrate">$0</div>
+      <div class="foot" id="kpiRunrateFoot">this month × 12</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Cumulative Net Revenue</div>
+      <div class="value teal" id="kpiCumulative">$0</div>
+      <div class="foot" id="kpiCumulativeFoot">since month 1</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="grp">
+      <button class="ctl primary" id="btnPause">Pause</button>
+      <button class="ctl" id="btnReset">Reset</button>
+    </div>
+    <div class="grp">
+      <label>SPEED</label>
+      <input type="range" id="speedSlider" min="1" max="20" value="4">
+      <span class="speed-val" id="speedVal">4×</span>
+    </div>
+    <div class="grp" style="margin-left:auto;">
+      <label id="statusLabel" class="mono">● running</label>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Users &amp; Revenue Over Time</h2>
+      <p class="panel-sub">Logistic onboarding curve (left axis) against monthly net revenue (right axis, log scale)</p>
+      <canvas id="chart" width="900" height="260"></canvas>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="swatch" style="background:#4FB6A8"></span>Active users</span>
+        <span class="legend-item"><span class="swatch" style="background:#E0A94B"></span>Net revenue / month</span>
+        <span class="legend-item"><span class="swatch" style="background:#6B7284; opacity:.6"></span>6B ceiling</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div>
+        <div class="gauge-labels"><span id="gaugePct">0.00% of ceiling</span><span>6,000,000,000 users</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Model Assumptions</h2>
+      <p class="panel-sub">Rebuilt from ad-network benchmarks, not the source plan's figures</p>
+      <div class="assum-row"><span class="k">Ad format</span><span class="v">10-second rewarded video</span></div>
+      <div class="assum-row"><span class="k">Watch time / user / day</span><span class="v">60 minutes (30 days/mo)</span></div>
+      <div class="assum-row"><span class="k">Ad impressions / user / month</span><span class="v">10,800</span></div>
+      <div class="assum-row"><span class="k">CPM range (blended, global)</span><span class="v">$3.00 – $8.00</span></div>
+      <div class="assum-row"><span class="k">Gross revenue / user / month</span><span class="v">$32.40 – $86.40</span></div>
+      <div class="assum-row"><span class="k">Reward payout</span><span class="v">30% of gross</span></div>
+      <div class="assum-row"><span class="k">Statutory deduction</span><span class="v">10% of gross</span></div>
+      <div class="assum-row"><span class="k">Net revenue / user / month</span><span class="v">$19.44 – $51.84</span></div>
+      <div class="assum-row"><span class="k">Onboarding curve</span><span class="v">Logistic, 4-yr, inflect month 30</span></div>
+    </div>
+  </div>
+
+  <div class="panel ledger-panel">
+    <h2>Monthly Ledger — live</h2>
+    <p class="panel-sub">Milestones and monthly settlement entries, generated as the simulation runs</p>
+    <div class="ledger-scroll">
+      <table class="ledger">
+        <thead><tr><th>Month</th><th>Event</th></tr></thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Illustrative simulation only — figures are synthetic, generated live in-browser. This model keeps the source plan's own <b>60 minutes/day</b> watch-time assumption (10,800 ten-second ads/month/user), but replaces its CPC-priced-as-CPM rate (which implied $36–$64 effective CPM) with a blended real-world rewarded-video CPM of <b>$3–$8</b>. Onboarding follows a 4-year logistic curve to a 6B-user ceiling, far faster than any real consumer app has ever grown (WhatsApp and TikTok each took 5–8 years to reach 1B) — kept this aggressive because that is the horizon requested, not because it is realistic. Nothing here reflects real transaction data or a committed forecast.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Grounded model constants ----------
+  const CEILING = 6.0e9;
+  const T0_MONTHS = 30;          // inflection at month 30 (~2.5 yrs)
+  const R_MONTHLY = 0.25528;     // calibrated: ~99% of ceiling reached by month 48 (4 yrs)
+
+  const CPM_LOW = 3.0, CPM_HIGH = 8.0;
+  const AD_SEC = 10, WATCH_MIN_DAY = 60;
+  const ADS_PER_MONTH = (WATCH_MIN_DAY * 60 / AD_SEC) * 30; // 1800
+  const REWARD_PCT = 0.30, STATUTORY_PCT = 0.10;
+  const NET_MULT = 1 - REWARD_PCT - STATUTORY_PCT; // 0.60
+
+  const CLAIMED_ANNUAL = 984.96e9;
+  const CLAIMED_CUMULATIVE = 42.01e12;
+
+  function usersAt(t){
+    return CEILING / (1 + Math.exp(-R_MONTHLY * (t - T0_MONTHS)));
+  }
+
+  // blended CPM: drifts from CPM_LOW toward CPM_HIGH as verticals mature (over ~5 years),
+  // then oscillates gently at steady state — mirrors the source plan's own narrative
+  // of sequencing premium verticals (finance/loans) in later months.
+  function cpmAt(t){
+    const maturity = Math.min(t / 36, 1); // ramps over 36 months (compressed for 4-yr ramp)
+    const base = CPM_LOW + (CPM_HIGH - CPM_LOW) * maturity;
+    const noise = (Math.sin(t * 0.7) * 0.4) + ((Math.random() - 0.5) * 0.6);
+    return Math.max(CPM_LOW * 0.85, Math.min(CPM_HIGH * 1.05, base + noise));
+  }
+
+  function fmtUSD(n){
+    const sign = n < 0 ? "-" : "";
+    n = Math.abs(n);
+    if (n >= 1e12) return sign + "$" + (n/1e12).toFixed(2) + "T";
+    if (n >= 1e9)  return sign + "$" + (n/1e9).toFixed(2) + "B";
+    if (n >= 1e6)  return sign + "$" + (n/1e6).toFixed(2) + "M";
+    if (n >= 1e3)  return sign + "$" + (n/1e3).toFixed(1) + "K";
+    return sign + "$" + n.toFixed(0);
+  }
+  function fmtNum(n){
+    if (n >= 1e9) return (n/1e9).toFixed(3) + "B";
+    if (n >= 1e6) return (n/1e6).toFixed(2) + "M";
+    if (n >= 1e3) return (n/1e3).toFixed(1) + "K";
+    return n.toFixed(0);
+  }
+
+  // ---------- DOM refs ----------
+  const el = {
+    month: document.getElementById("kpiMonth"),
+    yearFoot: document.getElementById("kpiYearFoot"),
+    users: document.getElementById("kpiUsers"),
+    usersFoot: document.getElementById("kpiUsersFoot"),
+    cpm: document.getElementById("kpiCpm"),
+    cpmFoot: document.getElementById("kpiCpmFoot"),
+    monthly: document.getElementById("kpiMonthly"),
+    monthlyFoot: document.getElementById("kpiMonthlyFoot"),
+    runrate: document.getElementById("kpiRunrate"),
+    runrateFoot: document.getElementById("kpiRunrateFoot"),
+    cumulative: document.getElementById("kpiCumulative"),
+    gaugeFill: document.getElementById("gaugeFill"),
+    gaugePct: document.getElementById("gaugePct"),
+    ledgerBody: document.getElementById("ledgerBody"),
+    btnPause: document.getElementById("btnPause"),
+    btnReset: document.getElementById("btnReset"),
+    speedSlider: document.getElementById("speedSlider"),
+    speedVal: document.getElementById("speedVal"),
+    statusLabel: document.getElementById("statusLabel"),
+  };
+
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+
+  // ---------- State ----------
+  let state, timer, running = true;
+  const BASE_INTERVAL = 900;
+
+  function freshState(){
+    return {
+      month: 0,
+      users: 0,
+      cpm: CPM_LOW,
+      monthlyRevenue: 0,
+      cumulativeRevenue: 0,
+      history: [{ month:0, users:0, revenue:0 }],
+      milestoneUsers: {},
+      milestoneRev: {},
+    };
+  }
+
+  function log(month, html, cls){
+    const tr = document.createElement("tr");
+    if (cls) tr.className = cls;
+    tr.innerHTML = `<td class="m">M${String(month).padStart(4,"0")}</td><td>${html}</td>`;
+    el.ledgerBody.prepend(tr);
+    while (el.ledgerBody.children.length > 300) el.ledgerBody.removeChild(el.ledgerBody.lastChild);
+  }
+
+  function sizeCanvas(){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, rect.width * dpr);
+    canvas.height = Math.max(1, 260 * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function draw(){
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = 260;
+    ctx.clearRect(0,0,w,h);
+
+    const hist = state.history;
+    if (hist.length < 2) return;
+
+    const padL = 54, padR = 54, padT = 14, padB = 22;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+
+    const maxUsers = CEILING * 1.06;
+    const revenues = hist.map(p => p.revenue);
+    const maxRevLog = Math.log10(Math.max(...revenues, 1e6) * 1.3);
+    const minRevLog = Math.log10(1e5);
+
+    const xFor = i => padL + (i/(hist.length-1)) * plotW;
+    const yForUsers = u => padT + plotH - (u/maxUsers)*plotH;
+    const yForRev = r => {
+      const lg = Math.log10(Math.max(r,1));
+      const t = (lg - minRevLog) / (maxRevLog - minRevLog);
+      return padT + plotH - Math.max(0,Math.min(1,t))*plotH;
+    };
+
+    // gridlines
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 1;
+    for (let i=0;i<=4;i++){
+      const y = padT + (plotH/4)*i;
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    }
+
+    // ceiling line
+    ctx.save();
+    ctx.strokeStyle = "rgba(107,114,132,0.5)";
+    ctx.setLineDash([3,3]);
+    const yCeil = yForUsers(CEILING);
+    ctx.beginPath(); ctx.moveTo(padL,yCeil); ctx.lineTo(w-padR,yCeil); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "rgba(107,114,132,0.8)";
+    ctx.font = "10px monospace";
+    ctx.fillText("6B CEILING", padL+2, yCeil-4);
+
+    // users line + fill
+    ctx.beginPath();
+    hist.forEach((p,i)=>{ const x=xFor(i), y=yForUsers(p.users); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+    ctx.lineTo(xFor(hist.length-1), padT+plotH);
+    ctx.lineTo(xFor(0), padT+plotH);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0,padT,0,padT+plotH);
+    grad.addColorStop(0,"rgba(79,182,168,0.22)");
+    grad.addColorStop(1,"rgba(79,182,168,0.0)");
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    hist.forEach((p,i)=>{ const x=xFor(i), y=yForUsers(p.users); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+    ctx.strokeStyle = "#4FB6A8"; ctx.lineWidth = 2; ctx.stroke();
+
+    // revenue line (log scale, right axis)
+    ctx.beginPath();
+    hist.forEach((p,i)=>{ const x=xFor(i), y=yForRev(p.revenue); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+    ctx.strokeStyle = "#E0A94B"; ctx.lineWidth = 2; ctx.stroke();
+
+    // axis labels
+    ctx.fillStyle = "#6B7284"; ctx.font = "10px monospace";
+    ctx.fillText("0", padL-14, padT+plotH+4);
+    ctx.fillText("6B", padL-30, padT+4);
+    ctx.textAlign = "right";
+    ctx.fillText("$" + fmtNum(Math.pow(10,maxRevLog)), w-padR+50, padT+4);
+    ctx.fillText("$100K", w-padR+50, padT+plotH+4);
+    ctx.textAlign = "left";
+  }
+
+  function tick(){
+    const s = state;
+    s.month += 1;
+    const t = s.month;
+
+    const prevUsers = s.users;
+    const newUsers = usersAt(t);
+    const avgUsers = (prevUsers + newUsers) / 2;
+    s.users = newUsers;
+
+    const cpm = cpmAt(t);
+    s.cpm = cpm;
+    const grossPerUser = (ADS_PER_MONTH/1000) * cpm;
+    const netPerUser = grossPerUser * NET_MULT;
+    const monthlyRevenue = avgUsers * netPerUser;
+    s.monthlyRevenue = monthlyRevenue;
+    s.cumulativeRevenue += monthlyRevenue;
+
+    s.history.push({ month:t, users:newUsers, revenue:monthlyRevenue });
+    if (s.history.length > 4000) s.history.shift();
+
+    // periodic ledger entries (monthly, but throttle logging frequency at high speed)
+    if (t % 1 === 0){
+      log(t, `Users ${fmtNum(newUsers)} · CPM $${cpm.toFixed(2)} · Net revenue ${fmtUSD(monthlyRevenue)} · Cumulative ${fmtUSD(s.cumulativeRevenue)}`);
+    }
+
+    // user milestones
+    [1e6,10e6,50e6,100e6,250e6,500e6,750e6,1e9,2e9,3e9,4e9,5e9,5.5e9,6e9].forEach(m=>{
+      if (newUsers >= m && !s.milestoneUsers[m]){
+        s.milestoneUsers[m] = true;
+        log(t, `◆ Milestone — crossed ${fmtNum(m)} active users`, "milestone");
+      }
+    });
+    // revenue milestones
+    [1e9,10e9,50e9,100e9,250e9,500e9,1e12,2e12,5e12,10e12,20e12,50e12].forEach(m=>{
+      if (s.cumulativeRevenue >= m && !s.milestoneRev[m]){
+        s.milestoneRev[m] = true;
+        log(t, `◆ Milestone — cumulative net revenue crossed ${fmtUSD(m)}`, "milestone-rev");
+      }
+    });
+
+    render();
+  }
+
+  function render(){
+    const s = state;
+    el.month.textContent = String(s.month).padStart(6,"0");
+    el.yearFoot.textContent = "Year " + (Math.floor((s.month-1)/12)+1) + ", month " + (((s.month-1)%12)+1);
+
+    el.users.textContent = fmtNum(s.users);
+    const pct = (s.users/CEILING)*100;
+    el.usersFoot.textContent = pct.toFixed(2) + "% of 6B ceiling";
+
+    el.cpm.textContent = "$" + s.cpm.toFixed(2);
+    el.cpmFoot.textContent = s.month < 60 ? "maturing toward full vertical mix" : "steady-state blended CPM";
+
+    el.monthly.textContent = fmtUSD(s.monthlyRevenue);
+    el.runrate.textContent = fmtUSD(s.monthlyRevenue*12);
+    el.cumulative.textContent = fmtUSD(s.cumulativeRevenue);
+
+    el.gaugeFill.style.width = Math.min(100, pct) + "%";
+    el.gaugePct.textContent = pct.toFixed(2) + "% of ceiling";
+
+    draw();
+  }
+
+  function scheduleNext(){
+    if (!running) return;
+    const speed = parseInt(el.speedSlider.value,10);
+    const interval = Math.max(30, BASE_INTERVAL / speed);
+    timer = setTimeout(()=>{ tick(); scheduleNext(); }, interval);
+  }
+
+  function init(){
+    sizeCanvas();
+    state = freshState();
+    log(0, "Simulation started — 0 users, $0 cumulative revenue. Growth follows a 4-year logistic curve toward a 6B-user ceiling.");
+    render();
+    scheduleNext();
+  }
+
+  el.btnPause.addEventListener("click", ()=>{
+    running = !running;
+    el.btnPause.textContent = running ? "Pause" : "Resume";
+    el.statusLabel.textContent = running ? "● running" : "○ paused";
+    if (running){ scheduleNext(); } else { clearTimeout(timer); }
+  });
+
+  el.btnReset.addEventListener("click", ()=>{
+    clearTimeout(timer);
+    el.ledgerBody.innerHTML = "";
+    state = freshState();
+    log(0, "Simulation reset — 0 users, $0 cumulative revenue.");
+    render();
+    running = true;
+    el.btnPause.textContent = "Pause";
+    el.statusLabel.textContent = "● running";
+    scheduleNext();
+  });
+
+  el.speedSlider.addEventListener("input", ()=>{
+    el.speedVal.textContent = el.speedSlider.value + "×";
+  });
+
+  window.addEventListener("resize", ()=>{ sizeCanvas(); draw(); });
+
+  init();
+})();
+</script>
+</body>
+</html>
